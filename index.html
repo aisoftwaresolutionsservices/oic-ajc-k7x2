@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#35146E">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Orders Intelligent Calculator (OIC) — Auwal Jogana Communication</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--deep:#35146E;--dark:#1F0B42;--line:#DDD0F0;--bg:#F7F3FD;--surf:#FFF;--text:#1D1526;--soft:#6B5E7E;--acc:#8B3FE0;--row:#FBF9FE;--ok:#1E7B46;--warn:#A9822F;--bad:#B23B3B;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#150C26;--surf:#21153A;--text:#F1EAFB;--soft:#B4A7CE;--line:#3A2A5C;--row:#281A45;color-scheme:dark}}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+#loginScreen{position:fixed;inset:0;background:var(--deep);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;z-index:100;color:#fff;overflow-y:auto}
+.logo{width:170px;max-width:55vw;height:auto;border-radius:50%;margin-bottom:14px;box-shadow:0 8px 28px rgba(0,0,0,.4);background:#fff}
+#loginScreen .brand{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:1.5rem;text-align:center}
+#loginScreen .sub{color:#CDBFE6;font-size:.88rem;margin:2px 0 18px}
+#nameInput,#pinInput{width:230px;text-align:center;font-size:1.1rem;padding:12px 10px;border-radius:10px;border:2px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;font-family:inherit;margin-bottom:10px}
+#pinInput{letter-spacing:8px;font-size:1.5rem}
+#nameInput:focus,#pinInput:focus{outline:2px solid var(--acc);outline-offset:2px}
+#nameInput::placeholder,#pinInput::placeholder{color:#8E7EAE;letter-spacing:2px}
+#loginBtn{margin-top:8px;background:var(--acc);color:#fff;border:0;border-radius:8px;padding:12px 34px;font-weight:700;font-size:.95rem;font-family:inherit;cursor:pointer}
+#loginBtn:disabled{background:#5B4A78;color:#B4A7CE}
+#loginError{margin-top:14px;color:#F4A6A6;font-size:.85rem;min-height:1.2em;text-align:center;max-width:280px}
+.hint{margin-top:6px;font-size:.78rem;color:#CDBFE6;text-align:center;max-width:280px}
+#app{display:none}
+header{position:relative;background:var(--deep);color:#fff;padding:16px 18px 0}
+.hrow{display:flex;align-items:center;gap:12px;padding-right:96px}
+.hlogo{width:46px;height:46px;border-radius:50%;flex-shrink:0;background:#fff}
+header .brand{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:1.2rem;line-height:1.15}
+header .sub{color:#CDBFE6;font-size:.8rem;margin-top:2px}
+.report-link,.btn-back{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);color:#fff;font-size:.76rem;font-weight:600;padding:6px 12px;border-radius:6px;cursor:pointer;font-family:inherit}
+.report-link{position:absolute;top:18px;right:18px}
+.meta-row{display:flex;gap:10px;margin-top:14px;padding-bottom:14px}
+.meta-field{flex:1;display:flex;flex-direction:column;gap:4px;min-width:0}
+.meta-field label{font-size:.7rem;color:#CDBFE6}
+.rep-badge{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:8px 10px;font-size:.88rem;font-weight:600}
+.logout-link{background:none;border:0;color:#CDBFE6;font-size:.72rem;text-decoration:underline;padding:4px 0 0;cursor:pointer;font-family:inherit;text-align:left}
+.meta-field select{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:8px 28px 8px 10px;color:#fff;font-family:inherit;font-size:.88rem;width:100%;appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23CDBFE6'><path d='M5.5 7.5L10 12l4.5-4.5H5.5z'/></svg>");background-repeat:no-repeat;background-position:right 8px center;background-size:16px}
+.meta-field select option{color:#1D1526}
+.cust-gsm{font-size:.72rem;color:#CDBFE6;min-height:1em}
+.new-customer-row{display:none;gap:8px;padding:0 18px 14px;flex-wrap:wrap;background:var(--deep)}
+.new-customer-row.show{display:flex}
+.new-customer-row input{flex:1;min-width:110px;padding:8px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;font-size:.85rem}
+.new-customer-row input::placeholder{color:#B4A7CE}
+.new-customer-row button{background:#fff;color:var(--deep);border:0;border-radius:6px;padding:0 14px;font-weight:700;cursor:pointer}
+/* sync bar */
+.sync-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--dark);color:#CDBFE6;font-size:.74rem;padding:7px 16px}
+.sync-bar .dot{width:9px;height:9px;border-radius:50%;background:#7BD88F;display:inline-block}
+.sync-bar.off .dot{background:#E8A33D}
+.sync-bar b{color:#fff}
+.sync-bar button{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:6px;padding:4px 10px;font-size:.72rem;font-weight:600;font-family:inherit;cursor:pointer}
+.sync-bar .attn{background:#B23B3B;border-color:#B23B3B;display:none}
+.sync-bar .spacer{flex:1}
+.tabs{display:flex;gap:8px;overflow-x:auto;padding:14px 16px 0;scrollbar-width:none}
+.tab-btn{flex-shrink:0;padding:9px 18px;border-radius:20px;font-weight:700;font-size:.85rem;cursor:pointer;border:2px solid transparent;background:var(--surf);color:var(--soft)}
+.tab-count{font-weight:500;opacity:.75;margin-left:4px}
+.price-toggle{display:flex;padding:12px 16px 10px}
+.price-toggle button{flex:1;padding:9px 6px;font-weight:700;font-size:.8rem;font-family:inherit;border:2px solid var(--line);background:var(--surf);color:var(--soft);cursor:pointer}
+.price-toggle button:not(:last-child){border-right:0}
+.price-toggle button:first-child{border-radius:8px 0 0 8px}.price-toggle button:last-child{border-radius:0 8px 8px 0}
+.price-toggle button.active{background:var(--deep);color:#fff;border-color:var(--deep)}
+.search-bar{padding:0 16px 10px}
+.search-bar input{width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--line);background:var(--surf);color:var(--text);font-size:.92rem;font-family:inherit}
+main{padding:0 16px 140px}
+.status-msg{text-align:center;color:var(--soft);padding:40px 20px;font-size:.9rem}
+.product-row{background:var(--surf);border:1px solid var(--line);border-left-width:4px;border-radius:10px;padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.product-row.active{background:var(--row)}
+.product-name{font-weight:600;font-size:.95rem}
+.product-price{font-variant-numeric:tabular-nums;color:var(--soft);font-size:.85rem;margin-top:2px}
+.discount-tag{color:#A9822F;font-weight:600;margin-left:4px}
+.qty-control{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.qty-btn{width:30px;height:30px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--acc);font-size:1.1rem;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none}
+.qty-btn.plus{border:0}
+.qty-input{width:48px;text-align:center;padding:6px 2px;border-radius:6px;border:1px solid var(--line);background:var(--surf);color:var(--text);font-family:inherit;font-size:.92rem;font-weight:600}
+.line-total{width:74px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600;font-size:.82rem;color:var(--acc);flex-shrink:0}
+.bottom-bar{position:fixed;bottom:0;left:0;right:0;background:var(--dark);color:#fff;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;justify-content:space-between;z-index:10}
+.count{font-size:.78rem;color:#CDBFE6}.total{font-size:1.1rem;font-weight:700;margin-top:2px}
+.generate-btn{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:12px 20px;font-weight:700;font-size:.9rem;font-family:inherit;cursor:pointer}
+.generate-btn:disabled{background:#5B4A78;color:#B4A7CE}
+.modal-overlay{position:fixed;inset:0;background:rgba(21,12,38,.6);display:none;align-items:flex-end;justify-content:center;z-index:70}
+.modal-overlay.open{display:flex}
+.invoice-sheet{background:var(--surf);width:100%;max-width:480px;border-radius:16px 16px 0 0;padding:22px 20px 24px;max-height:92vh;overflow-y:auto}
+.invoice-sheet h2{font-family:'Fraunces',Georgia,serif;font-size:1.2rem;margin:0 0 2px;color:var(--acc)}
+.invoice-meta{font-size:.8rem;color:var(--soft);margin-bottom:14px;line-height:1.5}
+.invoice-line{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:.88rem}
+.calc{color:var(--soft);font-size:.78rem}.amt{font-weight:600}
+.invoice-total-row{display:flex;justify-content:space-between;padding-top:14px;margin-top:6px;border-top:2px solid var(--acc);font-size:1.05rem;font-weight:700;color:var(--acc)}
+.modal-actions{display:flex;gap:10px;margin-top:20px}
+.modal-actions button{flex:1;padding:12px;border-radius:8px;font-weight:600;font-family:inherit;cursor:pointer;border:0}
+.btn-secondary{background:var(--bg);color:var(--acc);border:1px solid var(--line)!important}
+.btn-primary{background:var(--acc);color:#fff}.btn-primary:disabled{opacity:.5}
+/* payment block */
+.pay-block{margin-top:16px;padding-top:12px;border-top:1px dashed var(--line)}
+.pay-title{font-weight:700;font-size:.9rem;margin-bottom:8px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chips button{flex:1;min-width:84px;padding:9px 8px;border-radius:8px;border:2px solid var(--line);background:var(--surf);color:var(--soft);font-weight:700;font-size:.8rem;font-family:inherit;cursor:pointer}
+.chips button.on{background:var(--deep);color:#fff;border-color:var(--deep)}
+.chips button:disabled{opacity:.4;cursor:not-allowed}
+.pay-block label,.fld label{display:block;font-size:.74rem;color:var(--soft);margin:10px 0 4px}
+.pay-block input,.fld input{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surf);color:var(--text);font-size:1rem;font-family:inherit}
+.pay-summary{margin-top:10px;font-size:.88rem;font-weight:600}
+.pay-note{margin-top:4px;font-size:.76rem;color:var(--warn);min-height:1em}
+#reportScreen{display:none;position:fixed;inset:0;background:var(--bg);z-index:60;overflow-y:auto}
+.report-header{position:sticky;top:0;background:var(--deep);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:12px;z-index:2}
+.report-title{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:1.1rem}
+.report-tools{padding:12px 16px 0}
+.report-tools input{width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--line);background:var(--surf);color:var(--text);font-size:.92rem;font-family:inherit;margin-top:10px}
+.orders-list{padding:14px 16px 40px}
+.order-card{background:var(--surf);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
+.order-card-top{display:flex;justify-content:space-between;gap:10px}
+.order-id{font-size:.68rem;color:var(--soft);word-break:break-all;text-align:right;max-width:46%}
+.order-datetime{font-size:.85rem;font-weight:700;color:var(--acc)}
+.order-rep-cust{font-size:.8rem;color:var(--soft);margin-top:2px}
+.order-items{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
+.order-item-line{display:flex;justify-content:space-between;font-size:.82rem;padding:3px 0;color:var(--soft)}
+.order-total-row{display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);font-weight:700;color:var(--acc)}
+.order-sub-row{display:flex;justify-content:space-between;font-size:.85rem;padding-top:4px;font-weight:600}
+.badge{display:inline-block;font-size:.66rem;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:6px;vertical-align:middle}
+.b-pending{background:#FFF1D6;color:#8A5A00}.b-synced{background:#DDF3E4;color:#17653A}.b-rejected{background:#FBE3E3;color:#9B2C2C}
+.b-paid{background:#DDF3E4;color:#17653A}.b-part{background:#FFF1D6;color:#8A5A00}.b-owe{background:#FBE3E3;color:#9B2C2C}.b-over{background:#E4DDF7;color:#4B2A8A}
+.card-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.card-actions button{flex:1;min-width:92px;border-radius:8px;padding:9px;font-weight:700;font-size:.8rem;cursor:pointer;font-family:inherit;border:1px solid var(--line);background:var(--bg);color:var(--acc)}
+.card-actions .primary{background:var(--acc);color:#fff;border-color:var(--acc)}
+.card-actions .danger{background:#FBEAEA;color:#B23B3B;border-color:#EFC6C6}
+.err-line{margin-top:6px;font-size:.76rem;color:var(--bad)}
+.pay-row{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:.86rem}
+.pay-row .sm{font-size:.74rem;color:var(--soft)}
+.pay-row button{background:#FBEAEA;color:#B23B3B;border:1px solid #EFC6C6;border-radius:6px;padding:4px 10px;font-weight:700;font-size:.74rem;cursor:pointer;font-family:inherit;margin-top:4px}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#1F0B42;color:#fff;padding:10px 16px;border-radius:20px;font-size:.82rem;z-index:200;display:none;max-width:88vw;text-align:center}
+#receipt{display:none}
+@media print{@page{size:58mm auto;margin:0}
+:root{padding:0!important}html,body{background:#fff!important;margin:0;padding:0}
+body>*:not(#receipt){display:none!important}
+#receipt{display:block;width:48mm;margin:0 auto;padding:3mm 0 6mm;color:#000;font:11px/1.4 'Courier New',monospace}
+.rc-c{text-align:center}.rc-c img{width:22mm;height:auto;border-radius:50%;filter:grayscale(1) contrast(1.5);margin-bottom:1mm}
+.rc-b{font-weight:700;font-size:12px}
+.rc-h{border-top:1px dashed #000;margin:2mm 0}
+.rc-i{font-weight:700;margin-top:1mm}
+.rc-r{display:flex;justify-content:space-between;gap:2mm}
+.rc-t{font-size:13px;font-weight:700}
+.rc-s{font-size:9px}}
+</style></head><body>
+<div id="loginScreen">
+<img class="logo" src="logo.jpg" alt="Auwal Jogana Communication logo" onerror="this.style.display='none'">
+<div class="brand">Orders Intelligent Calculator (OIC)</div>
+<div class="sub">Auwal Jogana Communication</div>
+<input id="nameInput" type="text" placeholder="Staff name" autocomplete="username" list="staffNames">
+<datalist id="staffNames"></datalist>
+<input id="pinInput" type="password" inputmode="numeric" maxlength="8" placeholder="PIN" autocomplete="current-password">
+<button id="loginBtn">Sign in</button>
+<div class="hint">First sign-in on a new phone needs a signal. After that it works offline.</div>
+<div id="loginError"></div></div>
+
+<div id="app">
+<header>
+<button class="report-link" id="openReportBtn">Order Report</button>
+<div class="hrow"><img class="hlogo" src="logo.jpg" alt="AJC logo" onerror="this.style.display='none'"><div><div class="brand">Orders Intelligent Calculator (OIC)</div><div class="sub">Auwal Jogana Communication</div></div></div>
+<div class="meta-row">
+<div class="meta-field"><label>Sales Rep</label><div class="rep-badge" id="repBadge">—</div><button class="logout-link" id="logoutBtn">Log out</button></div>
+<div class="meta-field"><label for="custSelect">Customer</label><select id="custSelect"><option value="">Loading…</option></select><div class="cust-gsm" id="custGsm"></div></div>
+</div></header>
+<div class="sync-bar" id="syncBar"><span class="dot"></span><b id="syncState">Online</b><span id="syncPending">Pending: 0</span><span id="syncLast"></span><span class="spacer"></span><button id="attnBtn" class="attn">Needs attention (0)</button><button id="syncBtn">Sync now</button></div>
+<div class="new-customer-row" id="newCustomerRow"><input id="newCustomerInput" type="text" placeholder="New customer name"><input id="newCustomerGsm" type="tel" placeholder="GSM number"><button id="addCustomerBtn">Add</button></div>
+<div class="tabs" id="tabs"></div>
+<div class="price-toggle"><button id="normalPriceBtn" class="active">Normal Price</button><button id="discount50kBtn">Discount 0.50k</button><button id="discountN1Btn">Discount N1</button></div>
+<div class="search-bar"><input id="searchInput" type="text" placeholder="Search this category…"></div>
+<main id="productList"><div class="status-msg">Loading products…</div></main>
+<div class="bottom-bar"><div><div class="count" id="itemCount">0 items</div><div class="total" id="runningTotal">₦0</div></div><button class="generate-btn" id="generateBtn" disabled>Generate invoice</button></div>
+
+<div class="modal-overlay" id="modalOverlay"><div class="invoice-sheet"><h2>Invoice summary</h2><div class="invoice-meta" id="invoiceMeta"></div><div id="invoiceLines"></div>
+<div class="invoice-total-row"><span>Total</span><span id="invoiceTotal">₦0</span></div>
+<div class="pay-block">
+ <div class="pay-title">How is the customer paying?</div>
+ <div class="chips" id="payChoice"><button data-pay="full">Full payment</button><button data-pay="part">Part payment</button><button data-pay="credit">Credit (pay later)</button></div>
+ <div id="payFields" style="display:none">
+  <div id="payAmountRow"><label for="payAmount">Amount paid now (₦)</label><input id="payAmount" type="number" inputmode="decimal" min="0" step="any"></div>
+  <label>Method</label><div class="chips" id="payMethod"><button data-m="Cash" class="on">Cash</button><button data-m="Transfer">Transfer</button><button data-m="POS">POS</button></div>
+  <div id="payRefRow" style="display:none"><label for="payRef">Reference (transfer ID or POS receipt no.)</label><input id="payRef" type="text" autocomplete="off"></div>
+ </div>
+ <div class="pay-summary" id="paySummary"></div><div class="pay-note" id="payNote"></div>
+</div>
+<div class="modal-actions"><button class="btn-secondary" id="closeModalBtn">Edit order</button><button class="btn-primary" id="confirmBtn" disabled>Confirm &amp; save</button></div></div></div>
+
+<div class="modal-overlay" id="collectModal"><div class="invoice-sheet"><h2>Collect payment</h2><div class="invoice-meta" id="cInfo"></div>
+ <div class="fld"><label for="cAmount">Amount received (₦)</label><input id="cAmount" type="number" inputmode="decimal" min="0" step="any"></div>
+ <div class="fld"><label>Method</label><div class="chips" id="cMethod"><button data-m="Cash" class="on">Cash</button><button data-m="Transfer">Transfer</button><button data-m="POS">POS</button></div></div>
+ <div class="fld" id="cRefRow" style="display:none"><label for="cRef">Reference (transfer ID or POS receipt no.)</label><input id="cRef" type="text" autocomplete="off"></div>
+ <div class="pay-note" id="cNote"></div>
+ <div class="modal-actions"><button class="btn-secondary" id="cCancel">Cancel</button><button class="btn-primary" id="cSave">Save payment</button></div></div></div>
+
+<div class="modal-overlay" id="paymentsModal"><div class="invoice-sheet"><h2>Payments</h2><div class="invoice-meta" id="pmInfo"></div><div id="pmList"></div>
+ <div class="modal-actions"><button class="btn-secondary" id="pmClose">Close</button></div></div></div>
+
+<div class="modal-overlay" id="attnModal"><div class="invoice-sheet"><h2>Needs attention</h2><div class="invoice-meta">These records were refused by the server. Read the message, then retry or discard.</div><div id="attnList"></div>
+ <div class="modal-actions"><button class="btn-secondary" id="attnClose">Close</button></div></div></div>
+</div>
+<div class="toast" id="toast"></div>
+<div id="receipt"></div>
+<div id="reportScreen"><div class="report-header"><button class="btn-back" id="closeReportBtn">&larr; Back</button><div class="report-title">Order Report</div></div>
+<div class="report-tools"><div class="price-toggle" style="padding:0"><button id="fAll" class="active">All</button><button id="fOwing">Owing</button></div><input id="rptSearch" type="text" placeholder="Search customer or order number…"></div>
+<div id="ordersList" class="orders-list"></div></div>
+
+<script src="settings.js"></script><script src="db.js"></script><script src="ids.js"></script>
+<script src="pin.js"></script><script src="store.js"></script><script src="sync.js"></script><script src="app.js"></script>
+</body></html>
