@@ -26,6 +26,13 @@
   var modeFor = function (c) { return priceMode[c] || 'normal'; };
   function priceFor(p) { var m = modeFor(p.category); return m === 'discount50k' ? p.discountPrice : m === 'discountN1' ? p.discountN1Price : p.salesPrice; }
 
+  // Total discount on an invoice: (normal price - price charged) x quantity, added up. Older orders without listPrice show none.
+  function discountOf(items) {
+    var d = 0;
+    (items || []).forEach(function (it) { var lp = Number(it.listPrice), p = Number(it.price), q = Number(it.qty); if (!isNaN(lp) && !isNaN(p) && !isNaN(q) && lp > p) d += (lp - p) * q; });
+    return round2(d);
+  }
+
   function toast(msg) {
     var t = $('toast'); t.textContent = msg; t.style.display = 'block';
     clearTimeout(toast._t); toast._t = setTimeout(function () { t.style.display = 'none'; }, 3500);
@@ -101,7 +108,7 @@
     return Promise.all([OICdb.getAll('items'), OICdb.getAll('customers')]).then(function (r) {
       PRODUCTS = toProducts(r[0]);
       CATEGORIES = PRODUCTS.map(function (p) { return p.category; }).filter(function (c, i, a) { return a.indexOf(c) === i; });
-      if (CATEGORIES.indexOf(activeCategory) < 0) activeCategory = CATEGORIES[0] || null;
+      if (activeCategory !== 'ALL' && CATEGORIES.indexOf(activeCategory) < 0) activeCategory = CATEGORIES[0] || null;
       var keep = custSelect.value;
       initCustomers(r[1]);
       if (keep && keep !== '__new') custSelect.value = keep;
@@ -125,10 +132,10 @@
   var tabsEl = $('tabs'), listEl = $('productList'), searchInput = $('searchInput');
   function renderTabs() {
     tabsEl.innerHTML = '';
-    CATEGORIES.forEach(function (cat) {
-      var b = brandFor(cat);
-      var count = PRODUCTS.filter(function (p) { return p.category === cat && (qty[p.id] || 0) > 0; }).reduce(function (s, p) { return s + qty[p.id]; }, 0);
-      var btn = document.createElement('div'); btn.className = 'tab-btn'; btn.textContent = cat;
+    (CATEGORIES.length ? ['ALL'].concat(CATEGORIES) : []).forEach(function (cat) {
+      var b = brandFor(cat);                                              // 'ALL' has no brand colour: it gets the default purple
+      var count = PRODUCTS.filter(function (p) { return (cat === 'ALL' || p.category === cat) && (qty[p.id] || 0) > 0; }).reduce(function (s, p) { return s + qty[p.id]; }, 0);
+      var btn = document.createElement('div'); btn.className = 'tab-btn'; btn.textContent = cat === 'ALL' ? 'All' : cat;
       if (count > 0) { var c = document.createElement('span'); c.className = 'tab-count'; c.textContent = '(' + count + ')'; btn.appendChild(c); }
       if (cat === activeCategory) { btn.style.background = b.main; btn.style.color = b.text; btn.style.borderColor = b.main; } else btn.style.borderColor = b.main + '55';
       btn.onclick = function () { activeCategory = cat; searchInput.value = ''; renderTabs(); renderPriceToggle(); renderList(); };
@@ -136,18 +143,33 @@
     });
   }
   var pBtns = { normal: $('normalPriceBtn'), discount50k: $('discount50kBtn'), discountN1: $('discountN1Btn') };
-  function renderPriceToggle() { var m = modeFor(activeCategory); Object.keys(pBtns).forEach(function (k) { pBtns[k].classList.toggle('active', m === k); }); }
-  Object.keys(pBtns).forEach(function (k) { pBtns[k].onclick = function () { priceMode[activeCategory] = k; renderPriceToggle(); updateTotals(); }; });
+  function renderPriceToggle() {
+    var m;
+    if (activeCategory === 'ALL') {                                       // highlight only if every network uses the same price type
+      var ms = CATEGORIES.map(modeFor);
+      m = ms.length && ms.every(function (x) { return x === ms[0]; }) ? ms[0] : null;
+    } else m = modeFor(activeCategory);
+    Object.keys(pBtns).forEach(function (k) { pBtns[k].classList.toggle('active', m === k); });
+  }
+  Object.keys(pBtns).forEach(function (k) {
+    pBtns[k].onclick = function () {
+      if (activeCategory === 'ALL') CATEGORIES.forEach(function (c) { priceMode[c] = k; });   // on All, the price type applies to every network
+      else priceMode[activeCategory] = k;
+      renderPriceToggle(); updateTotals();
+    };
+  });
 
   function renderList(filter) {
     filter = filter || '';
+    var ae = document.activeElement;                                   // remember which quantity box has the cursor
+    var keepId = ae && ae.classList && ae.classList.contains('qty-input') ? ae.dataset.id : null;
     if (!activeCategory) { listEl.innerHTML = '<div class="status-msg">No products yet. Connect to the internet and sign in to download the price list.</div>'; return; }
     var term = filter.trim().toLowerCase();
-    var items = PRODUCTS.filter(function (p) { return p.category === activeCategory && p.name.toLowerCase().indexOf(term) >= 0; });
+    var items = PRODUCTS.filter(function (p) { return (activeCategory === 'ALL' || p.category === activeCategory) && (p.name + ' ' + p.category).toLowerCase().indexOf(term) >= 0; });
     listEl.innerHTML = '';
     if (!items.length) { listEl.innerHTML = '<div class="status-msg">No products match your search.</div>'; return; }
-    var b = brandFor(activeCategory), m = modeFor(activeCategory);
     items.forEach(function (p) {
+      var b = brandFor(p.category), m = modeFor(p.category);                // each row uses its own network colour and price type
       var q = qty[p.id] || 0, u = priceFor(p), row = document.createElement('div');
       row.className = 'product-row' + (q > 0 ? ' active' : ''); row.style.borderLeftColor = b.main;
       row.innerHTML = '<div><div class="product-name">' + esc(p.name) + '</div><div class="product-price">' + formatMoney(u) + ' / unit' + (m !== 'normal' ? '<span class="discount-tag">' + PML[m] + '</span>' : '') + '</div></div>' +
@@ -155,6 +177,10 @@
         '<div class="line-total">' + (q > 0 ? formatMoney(u * q) : '') + '</div>';
       listEl.appendChild(row);
     });
+    if (keepId) {                                                      // put the cursor back after the list is redrawn
+      var again = listEl.querySelectorAll('.qty-input');
+      for (var i = 0; i < again.length; i++) { if (again[i].dataset.id === keepId) { again[i].focus(); break; } }
+    }
   }
   function updateQty(id, n) { qty[id] = Math.max(0, Math.floor(Number(n)) || 0); updateTotals(); }
   function updateTotals() {
@@ -164,13 +190,23 @@
     renderTabs(); renderList(searchInput.value);
   }
   listEl.onclick = function (e) { var b = e.target.closest('.qty-btn'); if (!b) return; updateQty(b.dataset.id, (qty[b.dataset.id] || 0) + (b.dataset.action === 'inc' ? 1 : -1)); };
+  // Keyboard: Enter, Arrow Down and Tab go to the next quantity box; Arrow Up and Shift+Tab go to the previous one.
+  // Enter and the arrows wrap around at the ends. Tab leaves the list at the last box.
   listEl.onkeydown = function (e) {
-    if (e.target.classList.contains('qty-input') && e.key === 'Enter') {
-      e.preventDefault();
-      var idx = Array.prototype.indexOf.call(listEl.querySelectorAll('.qty-input'), e.target); updateQty(e.target.dataset.id, e.target.value);
-      var a = listEl.querySelectorAll('.qty-input'), n = a[idx + 1] || a[0]; if (n) { n.focus(); n.select(); }
-    }
+    if (!e.target.classList.contains('qty-input')) return;
+    var k = e.key;
+    if (k !== 'Enter' && k !== 'ArrowDown' && k !== 'ArrowUp' && k !== 'Tab') return;
+    var step = (k === 'ArrowUp' || (k === 'Tab' && e.shiftKey)) ? -1 : 1;
+    var inputs = listEl.querySelectorAll('.qty-input');
+    var idx = Array.prototype.indexOf.call(inputs, e.target);
+    if (k === 'Tab' && (idx + step < 0 || idx + step >= inputs.length)) return;   // let Tab leave the list normally
+    e.preventDefault();
+    updateQty(e.target.dataset.id, e.target.value);                               // saves the value; the list redraws
+    var a = listEl.querySelectorAll('.qty-input');
+    var n = a[idx + step] || (step > 0 ? a[0] : a[a.length - 1]);
+    if (n) { n.focus(); n.select(); }
   };
+  listEl.addEventListener('focusin', function (e) { if (e.target.classList.contains('qty-input')) e.target.select(); });
   listEl.onchange = function (e) { if (e.target.classList.contains('qty-input')) updateQty(e.target.dataset.id, e.target.value); };
   searchInput.oninput = function () { renderList(searchInput.value); };
 
@@ -203,7 +239,7 @@
     PRODUCTS.forEach(function (p) {
       var q = qty[p.id] || 0; if (q > 0) {
         var u = priceFor(p), lt = round2(u * q), m = modeFor(p.category); total += lt;
-        items.push({ code: p.id, name: p.name, category: p.category, priceMode: m, price: u, qty: q, lineTotal: lt });
+        items.push({ code: p.id, name: p.name, category: p.category, priceMode: m, listPrice: p.salesPrice, price: u, qty: q, lineTotal: lt });
         var r = document.createElement('div'); r.className = 'invoice-line';
         r.innerHTML = '<div><div>' + esc(p.name) + (m !== 'normal' ? ' <span style="color:#A9822F;font-size:.75rem">(' + PML[m] + ')</span>' : '') + '</div><div class="calc">' + q + ' \u00d7 ' + formatMoney(u) + '</div></div><div class="amt">' + formatMoney(lt) + '</div>';
         L.appendChild(r);
@@ -212,6 +248,9 @@
     total = round2(total);
     inv = { items: items, total: total, customer: c };
     $('invoiceTotal').textContent = formatMoney(total);
+    var disc = discountOf(items);
+    $('discountRow').style.display = disc > 0 ? 'flex' : 'none';
+    $('discountAmt').textContent = formatMoney(disc);
     payChoice = null; payMethod = 'Cash'; payRef.value = ''; payAmount.value = '';
     chipsOn($('payChoice'), 'data-pay', null); chipsOn($('payMethod'), 'data-m', 'Cash');
     Array.prototype.forEach.call($('payChoice').querySelectorAll('button'), function (b) { b.disabled = c.walkin && b.dataset.pay !== 'full'; });
@@ -278,7 +317,7 @@
       return '<div class="rc-i">' + esc(it.name) + (it.priceMode && it.priceMode !== 'normal' ? ' (' + PML[it.priceMode] + ')' : '') + '</div><div class="rc-r"><span>' + it.qty + ' \u00d7 ' + formatMoney(it.price) + '</span><span>' + formatMoney(it.lineTotal) + '</span></div>';
     }).join('');
     return rcHead('Invoice') + '<div>Date: ' + nowLabel(d.dateTime) + '</div><div>Order: ' + esc(d.orderId) + '</div><div>Rep: ' + esc(d.rep) + '</div><div>Customer: ' + esc(d.customer) + '</div><div class="rc-h"></div>' + lines +
-      '<div class="rc-h"></div><div class="rc-r rc-t"><span>TOTAL</span><span>' + formatMoney(d.total) + '</span></div><div class="rc-r"><span>Paid now</span><span>' + formatMoney(d.paid) + '</span></div><div class="rc-r rc-t"><span>BALANCE</span><span>' + formatMoney(d.balance) + '</span></div>' +
+      '<div class="rc-h"></div>' + (discountOf(d.items) > 0 ? '<div class="rc-r"><span>Discount granted</span><span>' + formatMoney(discountOf(d.items)) + '</span></div>' : '') + '<div class="rc-r rc-t"><span>TOTAL</span><span>' + formatMoney(d.total) + '</span></div><div class="rc-r"><span>Paid now</span><span>' + formatMoney(d.paid) + '</span></div><div class="rc-r rc-t"><span>BALANCE</span><span>' + formatMoney(d.balance) + '</span></div>' +
       '<div class="rc-h"></div><div class="rc-c">Thank you for your patronage</div>';
   }
   function receiptPayment(d) {
@@ -344,7 +383,7 @@
     if (canDelete(e)) acts += '<button class="danger" data-act="del" data-id="' + esc(e.orderId) + '">Delete</button>';
     return '<div class="order-card"><div class="order-card-top"><div><div class="order-datetime">' + lab + syncBadge(e.rec) + payBadge(e.total, e.balance, e.status) + '</div><div class="order-rep-cust">Rep: ' + esc(e.rep || '\u2014') + ' \u00b7 Customer: ' + esc(e.customer || '\u2014') + (e.gsm ? ' (' + esc(e.gsm) + ')' : '') + '</div></div><div class="order-id">' + esc(e.orderId) + '</div></div>' +
       (ih ? '<div class="order-items">' + ih + '</div>' : '') +
-      '<div class="order-total-row"><span>Total</span><span>' + formatMoney(e.total) + '</span></div><div class="order-sub-row"><span>Paid</span><span>' + formatMoney(paid) + '</span></div><div class="order-sub-row"><span>Balance <span style="font-weight:400;color:var(--soft)">(as of last sync)</span></span><span>' + formatMoney(e.balance) + '</span></div>' +
+      '<div class="order-total-row"><span>Total</span><span>' + formatMoney(e.total) + '</span></div>' + (discountOf(e.items) > 0 ? '<div class="order-sub-row" style="color:var(--warn)"><span>Discount granted</span><span>' + formatMoney(discountOf(e.items)) + '</span></div>' : '') + '<div class="order-sub-row"><span>Paid</span><span>' + formatMoney(paid) + '</span></div><div class="order-sub-row"><span>Balance <span style="font-weight:400;color:var(--soft)">(as of last sync)</span></span><span>' + formatMoney(e.balance) + '</span></div>' +
       (e.rec && e.rec.error ? '<div class="err-line">' + esc(e.rec.error) + '</div>' : '') +
       '<div class="card-actions">' + acts + '</div></div>';
   }

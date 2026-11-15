@@ -87,6 +87,7 @@ main{padding:0 16px 140px}
 .invoice-line{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:.88rem}
 .calc{color:var(--soft);font-size:.78rem}.amt{font-weight:600}
 .invoice-total-row{display:flex;justify-content:space-between;padding-top:14px;margin-top:6px;border-top:2px solid var(--acc);font-size:1.05rem;font-weight:700;color:var(--acc)}
+.discount-row{display:none;justify-content:space-between;padding-top:6px;font-size:.86rem;color:var(--warn);font-weight:600}
 .modal-actions{display:flex;gap:10px;margin-top:20px}
 .modal-actions button{flex:1;padding:12px;border-radius:8px;font-weight:600;font-family:inherit;cursor:pointer;border:0}
 .btn-secondary{background:var(--bg);color:var(--acc);border:1px solid var(--line)!important}
@@ -171,6 +172,7 @@ body>*:not(#receipt){display:none!important}
 
 <div class="modal-overlay" id="modalOverlay"><div class="invoice-sheet"><h2>Invoice summary</h2><div class="invoice-meta" id="invoiceMeta"></div><div id="invoiceLines"></div>
 <div class="invoice-total-row"><span>Total</span><span id="invoiceTotal">₦0</span></div>
+<div class="discount-row" id="discountRow"><span>Discount granted (already taken off)</span><span id="discountAmt">₦0</span></div>
 <div class="pay-block">
  <div class="pay-title">How is the customer paying?</div>
  <div class="chips" id="payChoice"><button data-pay="full">Full payment</button><button data-pay="part">Part payment</button><button data-pay="credit">Credit (pay later)</button></div>

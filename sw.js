@@ -1,7 +1,7 @@
 /* sw.js - keeps a copy of every app file so OIC opens with no signal.
    RULE: every time you change ANY file in this list, change CACHE_VERSION,
    or phones keep showing the old copy. */
-var CACHE_VERSION = 'oic-v2.0.0.1';
+var CACHE_VERSION = 'oic-v2.2.0';
 var FILES = ['./', './index.html', './app.js', './settings.js', './db.js', './ids.js', './pin.js',
              './store.js', './sync.js', './logo.jpg', './manifest.json', './icon-192.png', './icon-512.png'];
 
